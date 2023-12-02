@@ -2,7 +2,7 @@
 
 # Avoiding Performative Prediction with Zero Sum Training
 
-![](.\docs\diagram.png)
+![Avoiding Performative Prediction with Zero Sum Training](https://github.com/abdurraheemali/historical-action-predictor/blob/ed413112c5255281960caacbe6b1fa6d05f68321/docs/diagram.png)
 
 This project aims to improve the accuracy of predictive models by avoiding performative prediction through a method called Zero Sum Training.
 
