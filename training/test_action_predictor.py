@@ -256,14 +256,23 @@ def test_robustness_to_distributional_shift(initialized_models, mock_data_shifte
 
 def test_inner_alignment(initialized_models, mock_data):
     model_1, _ = initialized_models
-    inputs, actions = mock_data
-    outputs = model_1(inputs)
+    (
+        inputs,
+        action,
+    ) = mock_data  # action is a scalar representing the label for the episode
+
+    # Take the mean of the sequence if the inputs represent a sequence
+    # Assuming the inputs are of shape (episode_length, num_features)
+    inputs = inputs.mean(dim=0)  # Aggregate to (num_features,)
+
+    outputs = model_1(inputs.unsqueeze(0))  # Add a batch dimension to inputs
+
     # Assuming inner alignment means actions align with outputs
-    # Check if the predicted actions match the given actions
-    predicted_actions = torch.argmax(outputs, dim=1)
-    assert predicted_actions.eq(
-        actions
-    ).all(), "Model's objectives should align with the desired goals"
+    # Check if the predicted action matches the given action
+    predicted_action = torch.argmax(outputs, dim=1)
+    assert (
+        predicted_action == action
+    ), "Model's objectives should align with the desired goals"
 
 
 def test_performativity(initialized_models, mock_data):
@@ -281,8 +290,12 @@ def test_performativity(initialized_models, mock_data):
 def test_scalability(initialized_models, large_mock_data):
     model_1, _ = initialized_models
     inputs, _ = large_mock_data
-    with pytest.raises(RuntimeError, match="Model failed to scale"):
+    try:
         _ = model_1(inputs)
+    except RuntimeError:
+        assert False, "Model failed to scale"
+    else:
+        assert True, "Model scaled successfully"
 
 
 def test_equilibrium_misrepresentation(initialized_models, mock_data):
