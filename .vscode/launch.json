@@ -19,7 +19,7 @@
             "name": "Python: Test",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/training/test.py",
+            "program": "${workspaceFolder}/training/test_action_prediction.py",
             "console": "integratedTerminal"
         }
     ]
