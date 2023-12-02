@@ -1,28 +1,149 @@
 \documentclass[tikz,border=10pt]{standalone}
-\usetikzlibrary{shapes.geometric, arrows.meta, positioning}
+\usetikzlibrary{shapes, arrows.meta, positioning, shadows, patterns, backgrounds}
 
 % Define styles globally
 \tikzset{
-    decision/.style={diamond, aspect=2, draw, fill=blue!20, text width=5em, text centered, inner sep=0pt},
-    block/.style={rectangle, draw, fill=blue!20, text width=5em, text centered, rounded corners},
-    line/.style={draw, -Latex},
-    every node/.style={font=\sffamily}
+    process/.style={draw, thick, rounded corners, fill=blue!20, text width=1.5cm, align=center, minimum height=1cm, font=\sffamily},
+    arrow/.style={-Latex, thick, color=black},
+    pictogram/.style={draw, thick, fill=orange!30, minimum size=1cm}
+}
+
+\pgfdeclarelayer{background}
+\pgfsetlayers{background,main}
+
+
+\newcommand{\dataGenPictogram}{
+    \begin{tikzpicture}
+        % Refined factory building with more details and better proportions
+        \draw[fill=green!30, rounded corners=0.1cm] (-0.6,-0.4) rectangle (0.6,0.6);
+        % Windows with crossbars and improved placement
+        \foreach \x/\y in {-0.4/0.2, 0/0.2, 0.4/0.2, -0.4/-0.2, 0/-0.2, 0.4/-0.2} {
+            \draw[fill=green!10] (\x,\y) rectangle (\x+0.2,\y+0.3);
+            \draw (\x,\y+0.15) -- (\x+0.2,\y+0.15);
+            \draw (\x+0.1,\y) -- (\x+0.1,\y+0.3);
+        }
+        % Funnel with a more defined shape and better positioning
+        \draw[fill=green!50] (0.3,0.6) -- (0.5,0.9) -- (0.7,0.6);
+        % Door with a frame, handle, and better proportions
+        \draw[fill=green!10, rounded corners=0.05cm] (-0.2,-0.4) rectangle (0.2,-0.1);
+        \draw[fill=black] (0.15,-0.25) circle [radius=0.02];
+        % Smoke stacks with a gradient and smoke, with improved design
+        \foreach \x in {-0.5, 0, 0.5} {
+            \draw[top color=green!50, bottom color=green!30, rounded corners=0.05cm] (\x,0.6) rectangle (\x+0.2,0.8);
+            \draw[fill=white, opacity=0.8] (\x+0.1,0.8) circle [radius=0.12];
+            \draw[fill=white, opacity=0.8] (\x+0.1,1) circle [radius=0.16];
+            \draw[fill=white, opacity=0.8] (\x+0.1,1.2) circle [radius=0.2];
+        }
+    \end{tikzpicture}
+}
+
+\newcommand{\histDataPictogram}{
+    \begin{tikzpicture}
+        % Refined stack of papers with more realistic look and shadow for depth
+        \shade[right color=red!50, left color=red!30] (0,0) -- (0.9,0) -- (1,0.1) -- (1,0.6) -- (0,0.6) -- cycle;
+        \shade[right color=red!60, left color=red!40, drop shadow={opacity=0.5}] (0.1,0.1) -- (1,0.1) -- (1.1,0.2) -- (1.1,0.7) -- (0.1,0.7) -- cycle;
+        % Curled corner on top paper with gradient for a 3D effect
+        \shade[bottom color=red!50, top color=red!30] (1,0.6) -- (1.1,0.7) -- (1,0.7) -- cycle;
+        % Lines on top paper to represent text with better spacing
+        \foreach \y in {0.2,0.3,...,0.6}
+            \draw (0.2,\y) -- (0.9,\y);
+    \end{tikzpicture}
+}
+
+
+\newcommand{\preTrainPictogram}{
+    \begin{tikzpicture}
+        % Enhanced gear shape with smoother teeth, inner details, and a polished look
+        \foreach \i in {0,30,...,330} {
+            % Gear teeth with a more refined shape
+            \draw[fill=blue!30, draw=blue!50] (\i:0.6) -- (\i:0.7) arc (\i:\i+25:0.7) -- (\i+25:0.6) -- cycle;
+        }
+        % Inner circle with a gradient fill for a more realistic gear appearance
+        \shade[inner color=blue!30, outer color=blue!60] (0,0) circle [radius=0.5];
+        % Additional inner details to suggest complexity with improved aesthetics
+        \foreach \i in {0,45,...,315} {
+            \draw[fill=blue!80, draw=blue!50] (\i:0.25) -- (\i:0.35) arc (\i:\i+40:0.35) -- (\i+40:0.25) -- cycle;
+        }
+        % Central bolt for a more realistic and complete gear design
+        \draw[fill=blue!20, draw=blue!50] (0,0) circle [radius=0.1];
+    \end{tikzpicture}
+    }
+
+
+\newcommand{\perfPredPictogram}{
+\begin{tikzpicture}
+    % Axes
+    \draw[thick] (0,0) -- (1,0);
+    \draw[thick] (0,0) -- (0,0.7);
+    % Graph line
+    \draw[thick, yellow!60] (0,0) -- (0.5,0.5) -- (1,0.7);
+    % Points on the graph line
+    \draw[fill=yellow!80] (0,0) circle [radius=0.05];
+    \draw[fill=yellow!80] (0.5,0.5) circle [radius=0.05];
+    \draw[fill=yellow!80] (1,0.7) circle [radius=0.05];
+\end{tikzpicture}
+}
+
+\newcommand{\zeroSumPictogram}{
+\begin{tikzpicture}
+    % Enhanced stand and balance beam design
+    \draw[thick, rounded corners=1ex] (0.5,0) -- (0.5,0.7) -- (0.2,0.7) -- (0.8,0.7);
+    % Chains hanging from the balance beam
+    \draw[thick] (0.2,0.7) -- (0.2,0.3);
+    \draw[thick] (0.8,0.7) -- (0.8,0.3);
+    % Golden bowls design
+    \shade[ball color=yellow] (0.2,0.3) circle [radius=0.1];
+    \shade[ball color=yellow] (0.8,0.3) circle [radius=0.1];
+\end{tikzpicture}
+}
+
+\newcommand{\accComPictogram}{
+\begin{tikzpicture}
+    % Target circles
+    \draw[fill=cyan!30] (0.5,0.5) circle [radius=0.4];
+    \draw[fill=white] (0.5,0.5) circle [radius=0.3];
+    \draw[fill=cyan!60] (0.5,0.5) circle [radius=0.2];
+    \draw[fill=white] (0.5,0.5) circle [radius=0.1];
+    % Crosshairs
+    \draw[thick] (0.5,0.1) -- (0.5,0.9);
+    \draw[thick] (0.1,0.5) -- (0.9,0.5);
+\end{tikzpicture}
 }
 
 \begin{document}
-\begin{tikzpicture}[node distance=2cm and 1cm]
+\begin{tikzpicture}[node distance=2cm and 2cm, auto]
 
-    % First tree
-    \node [block] (root1) {Root 1};
-    \node [block, below left=of root1] (leftChild1) {Left Child 1};
-    \node [block, below right=of root1] (rightChild1) {Right Child 1};
-    \draw [line] (root1) -- (leftChild1);
-    \draw [line] (root1) -- (rightChild1);
+    % Data Generating Processes Icon
+    \node[pictogram] (dataGenIcon) {\dataGenPictogram};
+    \node[process, below=0.1cm of dataGenIcon] (dataGen) {Generating Processes};
 
-    % Second tree
-    \node [block, right=of root1] (root2) {Root 2};
-    \node [block, below=of root2] (rightChild2) {Right Child 2};
-    \draw [line] (root2) -- (rightChild2);
+    % Historical Datasets Icon
+    \node[pictogram, right=of dataGenIcon] (histDataIcon) {\histDataPictogram};
+    \node[process, below=0.1cm of histDataIcon] (histData) {Historical Datasets};
 
+    % Pre-training Icon
+    \node[pictogram, right=of histDataIcon] (preTrainIcon) {\preTrainPictogram};
+    \node[process, below=0.1cm of preTrainIcon] (preTrain) {Training};
+
+    % Performative Predictor Icon
+    \node[pictogram, below=of preTrainIcon] (perfPredIcon) {\perfPredPictogram};
+    \node[process, below=0.1cm of perfPredIcon] (perfPred) {Performative Predictor};
+
+    % Zero Sum Predictor Icon
+    \node[pictogram, right=of perfPredIcon] (zeroSumPredIcon) {\zeroSumPictogram};
+    \node[process, below=0.1cm of zeroSumPredIcon] (zeroSumPred) {Zero Sum Predictor};
+
+    % Accuracy Comparison Icon
+    \node[pictogram, below=of perfPredIcon, xshift=2cm] (accCompIcon) {\accComPictogram};
+    \node[process, below=0.1cm of accCompIcon] (accComp) {Accuracy Comparison};
+
+    \begin{pgfonlayer}{background}
+        \draw[arrow] (dataGen) -- (histData);
+        \draw[arrow] (histData) -- (preTrain);
+        \draw[arrow] (preTrain) -- (perfPred);
+        \draw[arrow] (preTrain) -| (zeroSumPred);
+        \draw[arrow] (perfPred) -- (accComp);
+        \draw[arrow](zeroSumPred) -- (accComp);
+    \end{pgfonlayer}
 \end{tikzpicture}
 \end{document}
