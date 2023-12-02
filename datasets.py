@@ -1,40 +1,40 @@
+from pydantic import BaseModel
 import torch
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-import pandas as pd
-import numpy as np 
+from torch.utils.data import Dataset, random_split
+
+
+class HistoricalDatasetConfig(BaseModel):
+    num_episodes: int = 1000
+    episode_length: int = 100
+    num_classes: int = 2
+    transform: callable = None
+
 
 class HistoricalDataset(Dataset):
-    def __init__(self, num_episodes=1000, episode_length=100, transform=None):
+    def __init__(self, config: HistoricalDatasetConfig):
         """
         Args:
-            num_episodes (int): Number of episodes to generate
-            episode_length (int): Length of each episode
-            transform (callable, optional): Optional transform to be applied on a sample.
+            config (HistoricalDatasetConfig): Configuration object for dataset parameters.
         """
-        self.data = self.generate_data(num_episodes, episode_length)
-        self.transform = transform
+        self.episode_length = config.episode_length
+        self.num_episodes = config.num_episodes
+        self.num_classes = config.num_classes
+        self.transform = config.transform
+        self.data = self.generate_data()
 
-    def generate_data(self, num_episodes, episode_length):
-        # Initialize an empty list to hold the episodes
-        data = []
-
-        # Generate the episodes
-        for _ in range(num_episodes):
-            # Assuming the last element is the label
-            episode = np.random.randn(episode_length + 1)
-            features = episode[:-1]
-            label = episode[-1]
-            data.append((features, label))
-
-        return data
+    def generate_data(self):
+        # Initialize tensors to hold the features and labels
+        features = torch.randn(self.num_episodes, self.episode_length)
+        labels = torch.randint(0, self.num_classes, (self.num_episodes,))
+        return features, labels
 
     def __len__(self):
-        return len(self.data)
-        
+        return self.num_episodes
+
     def __getitem__(self, idx):
-        # Extract a single item from the dataset
-        sample = self.data[idx]
+        # Extract features and label for a single episode
+        features = self.data[0][idx]
+        label = self.data[1][idx]
         if self.transform:
-            sample = (self.transform(sample[0]), sample[1])
-        return sample
+            features = self.transform(features)
+        return features, label

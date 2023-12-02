@@ -4,17 +4,25 @@
     "customizations": { 
         "vscode": {
             "settings": {
-                "terminal.integrated.shell.linux": "/bin/bash"
+                "editor.formatOnSave": true,
+                "[python]": {
+                    "editor.codeActionsOnSave": {
+                        "source.organizeImports": true
+                    },
+                    "editor.tabSize": 4,
+                    "editor.defaultFormatter": "ms-python.black-formatter"
+                }
             },
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
+                "ms-python.black-formatter",
                 "james-yu.latex-workshop"
             ]
         }
     },
     "forwardPorts": [7860, 8888, 8501], //ports for gradio, jupyter, streamlit
-    "postCreateCommand": "pip install -r requirements.txt",
+    "postCreateCommand": "pip install -r requirements.txt && pip install black",
     "postStartCommand": "echo 'Welcome to your new codespace!'",
     "postAttachCommand": "echo 'You have connected to your codespace!'",
     "remoteUser": "vscode"

@@ -156,3 +156,6 @@ cython_debug/
 *.fdb_latexmk
 *.synctex.gz
 *.dvi
+
+# PyTorch Model Checkpoints
+*.pth

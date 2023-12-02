@@ -1,6 +1,6 @@
 # generate_data.py
+import torch
 from datasets import HistoricalDataset
-import numpy as np
 import os
 
 def main():
@@ -19,9 +19,7 @@ def main():
         os.makedirs('data')
 
     # Save the features and labels separately to the data directory
-    features, labels = zip(*[dataset[i] for i in range(len(dataset))])
-    np.save(os.path.join('data', 'generated_features.npy'), np.array(features))
-    np.save(os.path.join('data', 'generated_labels.npy'), np.array(labels))
+    torch.save([dataset[i] for i in range(len(dataset))], os.path.join('data', 'generated_dataset.pt'))
 
 if __name__ == "__main__":
     main()
