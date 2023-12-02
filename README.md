@@ -24,17 +24,10 @@ Setting up this project is as easy as clicking a button, literally. Thanks to Gi
 
 To get started:
 
-1. Click on the "Open in GitHub CodeSpaces" badge at the top of this README.
+1. Click on the ["Open in GitHub CodeSpaces"](https://codespaces.new/abdurraheemali/historical-action-predictor?quickstart=1) badge at the top of this README.
 2. Wait for your CodeSpace to be prepared. This includes all dependency installations.
 3. Once your CodeSpace is ready, you can start coding right away!
 
 This setup requires zero manual steps, making it easy for anyone to contribute to the project.
 
 In addition, this project uses GitHub Actions for automated testing. Whenever you push changes to the repository, GitHub Actions will automatically run the test suite to ensure that everything is working as expected. Feel free to make changes without worry!
-
-##
-
-import torch.nn.functional as F
-
-utilities = torch.tensor([1.0, 2.0, 3.0, 4.0, 1.0])
-probabilities = F.softmax(utilities, dim=0)
