@@ -8,11 +8,14 @@
             },
             "extensions": [
                 "ms-python.python",
-                "ms-python.vscode-pylance"
+                "ms-python.vscode-pylance",
+                "james-yu.latex-workshop"
             ]
         }
     },
-    "forwardPorts": [],
+    "forwardPorts": [7860, 8888, 8501], //ports for gradio, jupyter, streamlit
     "postCreateCommand": "pip install -r requirements.txt",
-    "remoteUser": "root"
+    "postStartCommand": "echo 'Welcome to your new codespace!'",
+    "postAttachCommand": "echo 'You have connected to your codespace!'",
+    "remoteUser": "vscode"
 }

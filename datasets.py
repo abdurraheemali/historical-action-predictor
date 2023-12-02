@@ -11,8 +11,7 @@ class HistoricalDataset(Dataset):
             data_path (string): Path to the data file
             transform (callable, optional): Optional transform to be applied on a sample.
         """
-        self.data = [] #TODO: copy format of mage model. 
-        # Gotta be a context, action pair.
+        self.data = []
 
     def __len__(self):
         

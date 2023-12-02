@@ -1,0 +1,26 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Build Docker image
+      run: docker build -t test-image .
+
+    - name: Run tests
+      run: |
+        docker run --name test-container -d test-image
+        docker exec test-container pytest
+        docker exec test-container bash -c "find . -name '*.tex' -exec pdflatex {} \;"
+        docker exec test-container convert --version
+        docker rm -f test-container

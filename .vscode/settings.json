@@ -1,0 +1,60 @@
+{
+    "python.languageServer": "Pylance",
+    "cSpell.enabled": false,
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.tabSize": 4
+    },
+    "latex-workshop.latex.autoBuild.run": "onSave",
+    "latex-workshop.latex.recipes": [
+        {
+            "name": "pdflatex, convert to image and svg",
+            "tools": [
+                "pdflatex",
+                "convert_to_image",
+                "latex",
+                "convert_to_svg"
+            ]
+        }
+    ],
+    "latex-workshop.latex.tools": [
+        {
+            "name": "pdflatex",
+            "command": "pdflatex",
+            "args": [
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        },
+        {
+            "name": "convert_to_image",
+            "command": "magick",
+            "args": [
+                "%DIR%/%DOCFILE%.pdf",
+                "-density", "300",
+                "%DIR%/%DOCFILE%.png"
+            ]
+        },
+        {
+            "name": "latex",
+            "command": "latex",
+            "args": [
+                "-synctex=1",
+                "-interaction=nonstopmode",
+                "-file-line-error",
+                "%DOC%"
+            ]
+        },
+        {
+            "name": "convert_to_svg",
+            "command": "dvisvgm",
+            "args": [
+                "%DOCFILE%.dvi",
+                "-o",
+                "%DOCFILE%.svg"
+            ]
+        }
+    ]
+}
