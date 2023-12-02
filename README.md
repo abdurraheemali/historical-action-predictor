@@ -2,6 +2,8 @@
 
 # Avoiding Performative Prediction with Zero Sum Training
 
+![](.\docs\diagram.png)
+
 This project aims to improve the accuracy of predictive models by avoiding performative prediction through a method called Zero Sum Training.
 
 ## Process Overview
