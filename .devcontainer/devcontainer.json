@@ -24,6 +24,5 @@
     "forwardPorts": [7860, 8888, 8501, 55337], //ports for gradio, jupyter, streamlit, tests
     "postCreateCommand": "pip install -r requirements.txt && pip install black",
     "postStartCommand": "echo 'Welcome to your new codespace!'",
-    "postAttachCommand": "echo 'You have connected to your codespace!'",
-    "remoteUser": "vscode"
+    "postAttachCommand": "echo 'You have connected to your codespace!'"
 }
