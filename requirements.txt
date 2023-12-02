@@ -1,7 +1,0 @@
-torch
-torchvision
-torchaudio
-pydantic
-pytest
-numpy
-black
