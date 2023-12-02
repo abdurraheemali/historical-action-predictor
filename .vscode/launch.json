@@ -1,0 +1,26 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/train.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Generate Data",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/generate_data.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/training/test.py",
+            "console": "integratedTerminal"
+        }
+    ]
+}

@@ -1,7 +1,8 @@
 # generate_data.py
 import torch
-from datasets import HistoricalDataset
+from historical_datasets import HistoricalDataset
 import os
+
 
 def main():
     # Create a HistoricalDataset with 1000 episodes, each of length 100
@@ -15,11 +16,15 @@ def main():
     print(f"First item in dataset: {first_item}")
 
     # Ensure the data directory exists
-    if not os.path.exists('data'):
-        os.makedirs('data')
+    if not os.path.exists("data"):
+        os.makedirs("data")
 
     # Save the features and labels separately to the data directory
-    torch.save([dataset[i] for i in range(len(dataset))], os.path.join('data', 'generated_dataset.pt'))
+    torch.save(
+        [dataset[i] for i in range(len(dataset))],
+        os.path.join("data", "generated_dataset.pt"),
+    )
+
 
 if __name__ == "__main__":
     main()

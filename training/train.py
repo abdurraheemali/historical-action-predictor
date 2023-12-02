@@ -2,22 +2,29 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from datasets import HistoricalDataset
 from torch.utils.data import TensorDataset, DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from datasets import HistoricalDatasetConfig, HistoricalDataset
+from historical_datasets import HistoricalDatasetConfig, HistoricalDataset
 import os
 import random
 import logging
 import json
 from model.network import initialize_components
-from model.utils import set_seed, get_device, brier_score, strictly_proper_scoring_rule, validate_model, save_model
+from model.utils import (
+    set_seed,
+    get_device,
+    brier_score,
+    strictly_proper_scoring_rule,
+    validate_model,
+    save_model,
+)
 
 # Load configuration
-with open('config.json') as config_file:
+with open("config.json") as config_file:
     config = json.load(config_file)
 
 SEED = config["SEED"]
+NUM_FEATURES = config["NUM_FEATURES"]
 NUM_CLASSES = config["NUM_CLASSES"]
 LEARNING_RATE = config["LEARNING_RATE"]
 MOMENTUM = config["MOMENTUM"]
@@ -31,17 +38,18 @@ MODEL_DIR = config["MODEL_DIR"]
 
 # Configure logging
 logging_config = config["LOGGING"]
-filename = os.path.join(*logging_config["FILENAME"].split('/'))
+filename = os.path.join(*logging_config["FILENAME"].split("/"))
 
 logging.basicConfig(
     filename=filename,
     filemode=logging_config["FILEMODE"],
     level=logging.getLevelName(logging_config["LEVEL"]),
-    format=logging_config["FORMAT"]
+    format=logging_config["FORMAT"],
 )
 
 set_seed(SEED)
 device = get_device()
+
 
 def train_performative_model(
     model, trainloader, valloader, criterion, optimizer, scheduler, num_epochs=5
@@ -125,17 +133,20 @@ def train_zero_sum_models(
         save_model(model_2, f"zerosum_model_2_epoch_{epoch+1}.pth")
 
 
-
 def main():
-    num_classes = 2
-        performative_model, criterion, optimizer, scheduler = initialize_components(
-        ActionPredictor, NUM_CLASSES, LEARNING_RATE, MOMENTUM
+    # Initialize performative model with the number of input features and classes
+    performative_model, criterion, optimizer, scheduler = initialize_components(
+        ActionPredictor, NUM_FEATURES, NUM_CLASSES, LEARNING_RATE, MOMENTUM
     )
 
-     # Load and prepare data
+    # Load and prepare data
     config = HistoricalDatasetConfig(
-        num_episodes=NUM_EPISODES, episode_length=EPISODE_LENGTH, num_classes=NUM_CLASSES, transform=None
+        num_episodes=NUM_EPISODES,
+        episode_length=EPISODE_LENGTH,
+        num_classes=NUM_CLASSES,
+        transform=None,
     )
+
     full_dataset = HistoricalDataset(config=config)
     validation_split = 0.2
     num_train = int((1 - validation_split) * len(full_dataset))
@@ -150,8 +161,8 @@ def main():
     )
 
     # Initialize and train Zero Sum Predictors
-    zerosum_model_1 = ActionPredictor(num_classes).to(device)
-    zerosum_model_2 = ActionPredictor(num_classes).to(device)
+    zerosum_model_1 = ActionPredictor(num_input_features, num_classes).to(device)
+    zerosum_model_2 = ActionPredictor(num_input_features, num_classes).to(device)
     zerosum_optimizer_1 = optim.SGD(zerosum_model_1.parameters(), lr=0.01, momentum=0.9)
     zerosum_optimizer_2 = optim.SGD(zerosum_model_2.parameters(), lr=0.01, momentum=0.9)
     train_zero_sum_models(

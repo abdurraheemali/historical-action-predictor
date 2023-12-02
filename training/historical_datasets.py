@@ -7,7 +7,11 @@ class HistoricalDatasetConfig(BaseModel):
     num_episodes: int = 1000
     episode_length: int = 100
     num_classes: int = 2
+    num_features: int = 10
     transform: callable = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class HistoricalDataset(Dataset):
@@ -19,12 +23,14 @@ class HistoricalDataset(Dataset):
         self.episode_length = config.episode_length
         self.num_episodes = config.num_episodes
         self.num_classes = config.num_classes
+        self.num_features = config.num_features
         self.transform = config.transform
         self.data = self.generate_data()
 
     def generate_data(self):
-        # Initialize tensors to hold the features and labels
-        features = torch.randn(self.num_episodes, self.episode_length)
+        features = torch.randn(
+            self.num_episodes, self.episode_length, self.num_features
+        )
         labels = torch.randint(0, self.num_classes, (self.num_episodes,))
         return features, labels
 
