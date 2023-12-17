@@ -23,6 +23,7 @@ class ActionPredictor(nn.Module):
 def initialize_components(
     model_class, num_features, num_classes, learning_rate=0.01, momentum=0.9
 ):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model_class(num_features, num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)

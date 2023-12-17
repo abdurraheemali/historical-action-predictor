@@ -32,16 +32,20 @@ class HistoricalDataset(Dataset):
         features = torch.randn(
             self.num_episodes, self.episode_length, self.num_features
         )
-        labels = torch.randint(0, self.num_classes, (self.num_episodes,))
+        labels = torch.randint(
+            0, self.num_classes, (self.num_episodes, self.episode_length)
+        )
         return features, labels
 
     def __len__(self):
-        return self.num_episodes
+        return self.num_episodes * self.episode_length
 
     def __getitem__(self, idx):
         # Extract features and label for a single episode
-        features = self.data[0][idx]
-        label = self.data[1][idx]
+        episode_idx = idx // self.episode_length
+        time_idx = idx % self.episode_length
+        features = self.data[0][episode_idx, time_idx]
+        label = self.data[1][episode_idx, time_idx]
         if self.transform:
             features = self.transform(features)
         return features, label

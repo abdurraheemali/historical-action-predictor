@@ -2,14 +2,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import TensorDataset, DataLoader, random_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from historical_datasets import HistoricalDatasetConfig, HistoricalDataset
 import os
 import random
 import logging
 import json
-from model.network import initialize_components
+from model.network import initialize_components, ActionPredictor
 from model.utils import (
     set_seed,
     get_device,
@@ -20,7 +20,7 @@ from model.utils import (
 )
 
 # Load configuration
-with open("config.json") as config_file:
+with open(os.path.join(os.path.dirname(__file__), "config.json")) as config_file:
     config = json.load(config_file)
 
 SEED = config["SEED"]
@@ -40,6 +40,8 @@ MODEL_DIR = config["MODEL_DIR"]
 logging_config = config["LOGGING"]
 filename = os.path.join(*logging_config["FILENAME"].split("/"))
 
+if not os.path.exists(os.path.dirname(filename)):
+    os.makedirs(os.path.dirname(filename))
 logging.basicConfig(
     filename=filename,
     filemode=logging_config["FILEMODE"],
@@ -142,8 +144,9 @@ def main():
     # Load and prepare data
     config = HistoricalDatasetConfig(
         num_episodes=NUM_EPISODES,
-        episode_length=EPISODE_LENGTH,
         num_classes=NUM_CLASSES,
+        episode_length=EPISODE_LENGTH,
+        num_features=NUM_FEATURES,
         transform=None,
     )
 
@@ -161,8 +164,8 @@ def main():
     )
 
     # Initialize and train Zero Sum Predictors
-    zerosum_model_1 = ActionPredictor(num_input_features, num_classes).to(device)
-    zerosum_model_2 = ActionPredictor(num_input_features, num_classes).to(device)
+    zerosum_model_1 = ActionPredictor(NUM_FEATURES, NUM_CLASSES).to(device)
+    zerosum_model_2 = ActionPredictor(NUM_FEATURES, NUM_CLASSES).to(device)
     zerosum_optimizer_1 = optim.SGD(zerosum_model_1.parameters(), lr=0.01, momentum=0.9)
     zerosum_optimizer_2 = optim.SGD(zerosum_model_2.parameters(), lr=0.01, momentum=0.9)
     train_zero_sum_models(

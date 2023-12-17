@@ -20,6 +20,7 @@ def strictly_proper_scoring_rule(outputs, targets, num_classes):
 # Validation loop
 def validate_model(model, valloader, criterion):
     val_loss = 0.0
+    device = get_device()
     model.eval()
     with torch.no_grad():
         for val_inputs, val_actions in valloader:
@@ -29,9 +30,11 @@ def validate_model(model, valloader, criterion):
     return val_loss / len(valloader)
 
 
-# Save model function
 def save_model(model, filename):
-    path = os.path.join("results", "models", filename)
+    dir_path = os.path.join("results", "models")
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    path = os.path.join(dir_path, filename)
     torch.save(model.state_dict(), path)
 
 
