@@ -1,6 +1,6 @@
 {
     "python.languageServer": "Pylance",
-    "cSpell.enabled": false,
+    "cSpell.enabled": true,
     "editor.formatOnSave": true,
     "[python]": {
         "editor.tabSize": 4
@@ -38,7 +38,8 @@
             "command": "magick",
             "args": [
                 "%DIR%/%DOCFILE%.pdf",
-                "-density", "300",
+                "-density",
+                "300",
                 "%DIR%/%DOCFILE%.png"
             ]
         },
@@ -61,5 +62,7 @@
                 "%DOCFILE%.svg"
             ]
         }
-    ]
+    ],
+    "python.analysis.typeCheckingMode": "strict",
+    "python.analysis.autoImportCompletions": true
 }

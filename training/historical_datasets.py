@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional, Callable
 import torch
 from torch.utils.data import Dataset, random_split
 
@@ -8,7 +9,7 @@ class HistoricalDatasetConfig(BaseModel):
     episode_length: int = 100
     num_classes: int = 2
     num_features: int = 10
-    transform: callable = None
+    transform: Optional[Callable] = None
 
     class Config:
         arbitrary_types_allowed = True

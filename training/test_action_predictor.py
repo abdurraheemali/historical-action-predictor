@@ -8,7 +8,9 @@ from model.utils import strictly_proper_scoring_rule
 
 @pytest.fixture
 def default_dataset_config():
-    return HistoricalDatasetConfig(num_samples=100, num_features=10, num_classes=10)
+    return HistoricalDatasetConfig(
+        num_samples=100, num_features=10, num_classes=10, transform=None
+    )
 
 
 @pytest.fixture
