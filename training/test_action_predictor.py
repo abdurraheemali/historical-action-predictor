@@ -31,6 +31,9 @@ def initialized_models(default_dataset_config):
 def mock_data(default_dataset_config):
     dataset = HistoricalDataset(default_dataset_config)
     features, labels = dataset[0]
+    # Reshape the features tensor to 2D if it's not
+    if features.ndim == 1:
+        features = features.view(1, -1)
     return features, labels
 
 
@@ -45,6 +48,9 @@ def future_mock_data(default_dataset_config):
     future_config = default_dataset_config.copy(update={"transform": lambda x: x + 0.5})
     dataset = HistoricalDataset(future_config)
     future_features, future_labels = dataset[0]
+    # Reshape the features tensor to 2D if it's not
+    if future_features.ndim == 1:
+        future_features = future_features.view(1, -1)
     return future_features, future_labels
 
 
@@ -55,6 +61,9 @@ def mock_data_shifted(default_dataset_config):
     )
     dataset = HistoricalDataset(shifted_config)
     shifted_features, labels = dataset[0]
+    # Reshape the features tensor to 2D if it's not
+    if shifted_features.ndim == 1:
+        shifted_features = shifted_features.view(1, -1)
     return shifted_features, labels
 
 
@@ -65,6 +74,9 @@ def private_mock_data(default_dataset_config):
     )
     dataset = HistoricalDataset(private_config)
     private_features, private_labels = dataset[0]
+    # Reshape the features tensor to 2D if it's not
+    if private_features.ndim == 1:
+        private_features = private_features.view(1, -1)
     return private_features, private_labels
 
 
@@ -73,6 +85,9 @@ def large_mock_data(default_dataset_config):
     large_config = default_dataset_config.copy(update={"num_samples": 10000})
     large_dataset = HistoricalDataset(large_config)
     large_features, large_labels = large_dataset[0]
+    # Reshape the features tensor to 2D if it's not
+    if large_features.ndim == 1:
+        large_features = large_features.view(1, -1)
     return large_features, large_labels
 
 
@@ -101,12 +116,12 @@ def test_model_initialization(default_dataset_config):
         ).all(), "Models parameters should not be identical"
 
 
-def test_strictly_proper_scoring_rule(initialized_models, mock_data):
+def test_strictly_proper_scoring_rule(initialized_models, mock_data, default_dataset_config):
     model_1, model_2 = initialized_models
     inputs, actions = mock_data
     outputs_1 = model_1(inputs)
     outputs_2 = model_2(inputs)
-    num_classes = actions.max().item() + 1
+    num_classes = default_dataset_config.num_classes
     probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
     probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
     score_1 = strictly_proper_scoring_rule(probabilities_1, actions, num_classes)
@@ -153,7 +168,7 @@ def test_zero_sum_scores(initialized_models, mock_data):
     inputs, actions = mock_data
     outputs_1 = model_1(inputs)
     outputs_2 = model_2(inputs)
-    num_classes = actions.max().item() + 1
+    num_classes = outputs_1.size(1)
     probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
     probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
     scores_1 = strictly_proper_scoring_rule(probabilities_1, actions, num_classes)
@@ -184,7 +199,7 @@ def test_conditional_predictions(initialized_models, mock_data):
     outputs_2 = model_2(inputs)
     # Convert actions to one-hot encoding for conditional comparison
     actions_one_hot = torch.nn.functional.one_hot(
-        actions, num_classes=actions.max().item() + 1
+        actions, num_classes=outputs_1.size(1)
     ).float()
     # Multiply the outputs with the one-hot encoded actions to get conditional predictions
     conditional_outputs_1 = outputs_1 * actions_one_hot
