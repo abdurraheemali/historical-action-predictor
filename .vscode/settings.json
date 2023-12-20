@@ -1,5 +1,5 @@
 {
-    "python.languageServer": "Pylance",
+    "python.languageServer": "Default",
     "cSpell.enabled": true,
     "editor.formatOnSave": true,
     "[python]": {
