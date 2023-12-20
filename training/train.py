@@ -54,7 +54,13 @@ device = get_device()
 
 
 def train_performative_model(
-    model, trainloader, valloader, criterion, optimizer, scheduler, num_epochs=5
+    model,
+    trainloader,
+    valloader,
+    criterion,
+    optimizer,
+    scheduler,
+    num_epochs=NUM_EPOCHS,
 ):
     best_loss = float("inf")
     early_stopping_patience = 3
@@ -91,40 +97,47 @@ def train_performative_model(
 
 # Define the Zero Sum Predictor training function
 def train_zero_sum_models(
-    model_1, model_2, trainloader, optimizer_1, optimizer_2, num_epochs=5
+    model_1, model_2, trainloader, optimizer_1, optimizer_2, num_epochs=NUM_EPOCHS
 ):
     for epoch in range(num_epochs):
         zerosum_running_score_1 = 0.0
         zerosum_running_score_2 = 0.0
         for inputs, actions in trainloader:
             inputs, actions = inputs.to(device), actions.to(device)
-            # Zero Sum model 1 training
+
+            # Zero the gradients for both optimizers
             optimizer_1.zero_grad()
+            optimizer_2.zero_grad()
+
+            # Forward pass for both models
             outputs_1 = model_1(inputs)
             probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
-
-            # Zero Sum model 2 training
-            optimizer_2.zero_grad()
             outputs_2 = model_2(inputs)
             probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
-            loss_2 = strictly_proper_scoring_rule(
-                probabilities_2, actions, actions.max().item() + 1
-            ) - strictly_proper_scoring_rule(
+
+            # Compute scores
+            score_1 = strictly_proper_scoring_rule(
                 probabilities_1, actions, actions.max().item() + 1
             )
+            score_2 = strictly_proper_scoring_rule(
+                probabilities_2, actions, actions.max().item() + 1
+            )
+
+            # Compute the losses as the negation of the other's score
+            loss_1 = score_1 - score_2.detach()
+            loss_2 = score_2 - score_1.detach()
+
+            loss_1.backward(retain_graph=True)
+            optimizer_1.step()
+
+            optimizer_2.zero_grad()
+
             loss_2.backward()
             optimizer_2.step()
 
-            loss_1 = strictly_proper_scoring_rule(
-                probabilities_1, actions, actions.max().item() + 1
-            ) - strictly_proper_scoring_rule(
-                probabilities_2, actions, actions.max().item() + 1
-            )
-            loss_1.backward()
-            optimizer_1.step()
             # Calculate the zero-sum score for this batch
-            batch_score_1 = loss_2.item() - loss_1.item()
-            batch_score_2 = loss_1.item() - loss_2.item()
+            batch_score_1 = loss_1.item() - loss_2.item()
+            batch_score_2 = loss_2.item() - loss_1.item()
             zerosum_running_score_1 += batch_score_1
             zerosum_running_score_2 += batch_score_2
 

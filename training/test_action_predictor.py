@@ -116,7 +116,9 @@ def test_model_initialization(default_dataset_config):
         ).all(), "Models parameters should not be identical"
 
 
-def test_strictly_proper_scoring_rule(initialized_models, mock_data, default_dataset_config):
+def test_strictly_proper_scoring_rule(
+    initialized_models, mock_data, default_dataset_config
+):
     model_1, model_2 = initialized_models
     inputs, actions = mock_data
     outputs_1 = model_1(inputs)
