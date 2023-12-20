@@ -102,11 +102,6 @@ def train_zero_sum_models(
             optimizer_1.zero_grad()
             outputs_1 = model_1(inputs)
             probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
-            loss_1 = strictly_proper_scoring_rule(
-                probabilities_1, actions, actions.max().item() + 1
-            )
-            loss_1.backward()
-            optimizer_1.step()
 
             # Zero Sum model 2 training
             optimizer_2.zero_grad()
@@ -114,10 +109,19 @@ def train_zero_sum_models(
             probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
             loss_2 = strictly_proper_scoring_rule(
                 probabilities_2, actions, actions.max().item() + 1
+            ) - strictly_proper_scoring_rule(
+                probabilities_1, actions, actions.max().item() + 1
             )
             loss_2.backward()
             optimizer_2.step()
 
+            loss_1 = strictly_proper_scoring_rule(
+                probabilities_1, actions, actions.max().item() + 1
+            ) - strictly_proper_scoring_rule(
+                probabilities_2, actions, actions.max().item() + 1
+            )
+            loss_1.backward()
+            optimizer_1.step()
             # Calculate the zero-sum score for this batch
             batch_score_1 = loss_2.item() - loss_1.item()
             batch_score_2 = loss_1.item() - loss_2.item()
