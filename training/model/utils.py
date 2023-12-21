@@ -9,6 +9,12 @@ def brier_score(outputs, targets, num_classes):
     return torch.mean((one_hot_targets - outputs).pow(2))
 
 
+def conditional_brier_score(outputs, targets, chosen_actions):
+    chosen_action_probs = torch.gather(outputs, 1, chosen_actions.unsqueeze(1))
+    chosen_action_targets = torch.gather(targets, 1, chosen_actions.unsqueeze(1))
+    return torch.mean((chosen_action_targets - chosen_action_probs).pow(2))
+
+
 def strictly_proper_scoring_rule(outputs, targets, num_classes):
     # The Brier score is a strictly proper scoring rule that measures the accuracy of probabilistic predictions
     # It is the mean squared difference between the predicted probability assigned to the possible outcomes and the actual outcome
@@ -55,9 +61,11 @@ def calculate_ece(outputs, labels, n_bins=10):
     bin_lowers = bin_boundaries[:-1]
     bin_uppers = bin_boundaries[1:]
 
-    softmaxes = torch.nn.functional.softmax(outputs, dim=1)
-    confidences, predictions = torch.max(softmaxes, 1)
-    accuracies = predictions.eq(labels)
+    # softmaxes = torch.nn.functional.softmax(outputs, dim=1)
+    # confidences, predictions = torch.max(softmaxes, 1)
+    # accuracies = predictions.eq(labels)
+    confidences = torch.nn.functional.sigmoid(outputs)
+    accuracies = labels
 
     ece = torch.zeros(1, device=outputs.device)
     for bin_lower, bin_upper in zip(bin_lowers, bin_uppers):

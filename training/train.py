@@ -4,7 +4,7 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from historical_datasets import HistoricalDatasetConfig, HistoricalDataset
+from historical_datasets import HistoricalDatasetConfig, HistoricalDataset, ProbIdentityDataset
 import os
 import random
 import logging
@@ -16,6 +16,7 @@ from model.utils import (
     set_seed,
     get_device,
     brier_score,
+    conditional_brier_score,
     strictly_proper_scoring_rule,
     validate_model,
     save_model,
@@ -37,6 +38,9 @@ VALIDATION_SPLIT = config["VALIDATION_SPLIT"]
 NUM_EPISODES = config["NUM_EPISODES"]
 EPISODE_LENGTH = config["EPISODE_LENGTH"]
 MODEL_DIR = config["MODEL_DIR"]
+
+# bad hack
+NUM_FEATURES = NUM_CLASSES
 
 # Configure logging
 logging_config = config["LOGGING"]
@@ -73,9 +77,14 @@ def train_performative_model(
             inputs, actions = inputs.to(device), actions.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
-            probabilities = torch.nn.functional.softmax(outputs, dim=1)
-            strictly_proper_scoring_rule(
-                probabilities, actions, actions.max().item() + 1
+            # probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            probabilities = torch.nn.functional.sigmoid(outputs)
+            chosen_actions = torch.argmax(probabilities, dim=1)
+            # strictly_proper_scoring_rule(
+            #     probabilities, actions, actions.max().item() + 1
+            # )
+            conditional_brier_score(
+                probabilities, actions, chosen_actions
             )
             loss = criterion(outputs, actions)
             loss.backward()
@@ -110,16 +119,27 @@ def train_zero_sum_models(
 
             # Forward pass for both models
             outputs_1 = model_1(inputs)
-            probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
+            # probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
+            probabilities_1 = torch.nn.functional.sigmoid(outputs_1)
             outputs_2 = model_2(inputs)
-            probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
+            # probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
+            probabilities_2 = torch.nn.functional.sigmoid(outputs_2)
+
+            max_probabilities = torch.max(probabilities_1, probabilities_2)
+            chosen_actions = torch.argmax(max_probabilities, dim=1)
 
             # Compute scores
-            score_1 = strictly_proper_scoring_rule(
-                probabilities_1, actions, actions.max().item() + 1
+            # score_1 = strictly_proper_scoring_rule(
+            #     probabilities_1, actions, actions.max().item() + 1
+            # )
+            # score_2 = strictly_proper_scoring_rule(
+            #     probabilities_2, actions, actions.max().item() + 1
+            # )
+            score_1 = conditional_brier_score(
+                probabilities_1, actions, chosen_actions
             )
-            score_2 = strictly_proper_scoring_rule(
-                probabilities_2, actions, actions.max().item() + 1
+            score_2 = conditional_brier_score(
+                probabilities_2, actions, chosen_actions
             )
 
             # Compute the losses as the negation of the other's score
@@ -166,7 +186,8 @@ def main():
         transform=None,
     )
 
-    full_dataset = HistoricalDataset(config=config)
+    # full_dataset = HistoricalDataset(config=config)
+    full_dataset = ProbIdentityDataset(config=config)
     validation_split = 0.2
     num_train = int((1 - validation_split) * len(full_dataset))
     num_val = len(full_dataset) - num_train
