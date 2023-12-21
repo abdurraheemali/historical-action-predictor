@@ -9,6 +9,8 @@ import os
 import random
 import logging
 import json
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 from model.network import initialize_components, ActionPredictor
 from model.utils import (
     set_seed,
@@ -17,6 +19,7 @@ from model.utils import (
     strictly_proper_scoring_rule,
     validate_model,
     save_model,
+    calculate_ece,
 )
 
 # Load configuration
@@ -33,7 +36,6 @@ BATCH_SIZE = config["BATCH_SIZE"]
 VALIDATION_SPLIT = config["VALIDATION_SPLIT"]
 NUM_EPISODES = config["NUM_EPISODES"]
 EPISODE_LENGTH = config["EPISODE_LENGTH"]
-EARLY_STOPPING_PATIENCE = config["EARLY_STOPPING_PATIENCE"]
 MODEL_DIR = config["MODEL_DIR"]
 
 # Configure logging
@@ -63,16 +65,18 @@ def train_performative_model(
     num_epochs=NUM_EPOCHS,
 ):
     best_loss = float("inf")
-    early_stopping_patience = 3
-    patience_counter = 0
 
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         model.train()
         running_loss = 0.0
         for inputs, actions in trainloader:
             inputs, actions = inputs.to(device), actions.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
+            probabilities = torch.nn.functional.softmax(outputs, dim=1)
+            strictly_proper_scoring_rule(
+                probabilities, actions, actions.max().item() + 1
+            )
             loss = criterion(outputs, actions)
             loss.backward()
             optimizer.step()
@@ -83,13 +87,8 @@ def train_performative_model(
 
         if val_loss < best_loss:
             best_loss = val_loss
-            patience_counter = 0
+
             save_model(model, "best_performative_model.pth")
-        else:
-            patience_counter += 1
-            if patience_counter >= early_stopping_patience:
-                logging.info("Early stopping triggered")
-                break
 
         scheduler.step(val_loss)
         save_model(model, f"performative_model_epoch_{epoch+1}.pth")
@@ -99,7 +98,7 @@ def train_performative_model(
 def train_zero_sum_models(
     model_1, model_2, trainloader, optimizer_1, optimizer_2, num_epochs=NUM_EPOCHS
 ):
-    for epoch in range(num_epochs):
+    for epoch in tqdm(range(num_epochs)):
         zerosum_running_score_1 = 0.0
         zerosum_running_score_2 = 0.0
         for inputs, actions in trainloader:
@@ -192,6 +191,24 @@ def main():
         zerosum_optimizer_1,
         zerosum_optimizer_2,
     )
+
+    inputs, labels = next(iter(valloader))
+
+    inputs, labels = inputs.to(device), labels.to(device)
+
+    ece_performative = calculate_ece(performative_model(inputs), labels)
+    ece_zerosum_1 = calculate_ece(zerosum_model_1(inputs), labels)
+    ece_zerosum_2 = calculate_ece(zerosum_model_2(inputs), labels)
+
+    # Plot ECE values
+    plt.figure(figsize=(10, 6))
+    plt.bar(
+        ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
+        [ece_performative.item(), ece_zerosum_1.item(), ece_zerosum_2.item()],
+    )
+    plt.title("Expected Calibration Error for Each Model")
+    plt.ylabel("ECE")
+    plt.savefig("results/ece_plot.png")
 
 
 if __name__ == "__main__":

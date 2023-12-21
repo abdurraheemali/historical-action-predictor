@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import random_split
 from historical_datasets import HistoricalDataset, HistoricalDatasetConfig
 from model.network import ActionPredictor
-from model.utils import strictly_proper_scoring_rule
+from model.utils import strictly_proper_scoring_rule, calculate_ece
 
 
 @pytest.fixture
@@ -357,3 +357,13 @@ def test_private_information(initialized_models, mock_data, private_mock_data):
     assert torch.mean(outputs_1_private) > torch.mean(
         outputs_2_public
     ), "Model with private information should have better predictive capabilities"
+
+
+def test_ece(initialized_models, mock_data):
+    model_1, model_2 = initialized_models
+    inputs, labels = mock_data
+    outputs_1 = model_1(inputs)
+    outputs_2 = model_2(inputs)
+    ece_1 = calculate_ece(outputs_1, labels)
+    ece_2 = calculate_ece(outputs_2, labels)
+    print(f"ECE for model 1: {ece_1.item()}, ECE for model 2: {ece_2.item()}")

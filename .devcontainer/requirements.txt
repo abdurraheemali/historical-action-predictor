@@ -5,3 +5,5 @@ pydantic
 pytest
 numpy
 black
+matplotlib
+tqdm

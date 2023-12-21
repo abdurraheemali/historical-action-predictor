@@ -4,12 +4,11 @@
     "NUM_CLASSES": 2,
     "LEARNING_RATE": 0.01,
     "MOMENTUM": 0.9,
-    "NUM_EPOCHS": 30,
+    "NUM_EPOCHS": 100,
     "BATCH_SIZE": 64,
     "VALIDATION_SPLIT": 0.2,
     "NUM_EPISODES": 1000,
     "EPISODE_LENGTH": 100,
-    "EARLY_STOPPING_PATIENCE": 3,
     "MODEL_DIR": "results/models",
     "LOGGING": {
         "FILENAME": "results/logs/training.log",
