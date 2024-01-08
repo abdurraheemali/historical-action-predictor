@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI System Stability Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        .links line {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+
+        .nodes circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+        /* New styles for sidebar, feedback, and summary */
+        .sidebar {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            width: 150px;
+            background: #f3f3f3;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .feedback-container {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 100%;
+            text-align: center;
+        }
+        .summary-screen {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        /* Styles for the start button and summary steps */
+        #start-button {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .summary-step {
+            padding: 5px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Start button added to the HTML -->
+    <button id="start-button">Start Simulation</button>
+    <svg width="960" height="600"></svg>
+    <div class="sidebar">
+        <label>Stability Threshold</label>
+        <div id="stability-gauge">
+            <svg width="100" height="100">
+                <!-- Gauge background -->
+                <circle cx="50" cy="50" r="45" fill="#ddd" />
+                <!-- Gauge value (dynamic part) -->
+                <path d="M50,5 L50,50 L55,45 Z" fill="#f00" transform="rotate(0,50,50)" class="needle" />
+                <!-- Gauge center cover -->
+                <circle cx="50" cy="50" r="5" fill="#fff" />
+            </svg>
+        </div>
+    </div>
+    <div class="feedback-container">
+        <div id="feedback-icons">
+            <!-- Feedback icons will be dynamically inserted here by the script -->
+        </div>
+    </div>
+    <div class="summary-screen">
+        <div>Identify Instability</div>
+        <div>Activate Fail-Safe</div>
+        <div>Integrate Feedback</div>
+        <div>Achieve Stability</div>
+    </div>
+    <script>
+        
+        // Expanded list of nodes
+        const nodes = [
+            { id: 1 }, { id: 2 }, { id: 3 },
+            // Add more nodes here
+            { id: 4 }, { id: 5 }, { id: 6 }, { id: 7 }, { id: 8 }, { id: 9 }, { id: 10 }
+        ];
+
+        // Expanded list of links
+        const links = [
+            { source: 1, target: 2 }, { source: 1, target: 3 },
+            // Add more links here
+            { source: 2, target: 4 }, { source: 2, target: 5 },
+            { source: 3, target: 6 }, { source: 4, target: 6 },
+            { source: 5, target: 7 }, { source: 6, target: 7 },
+            { source: 7, target: 8 }, { source: 8, target: 9 },
+            { source: 9, target: 10 }, { source: 10, target: 1 }
+        ];
+
+        const svg = d3.select("svg"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height");
+
+        const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links).id(d => d.id))
+            .force("charge", d3.forceManyBody())
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        const link = svg.append("g")
+            .attr("class", "links")
+            .selectAll("line")
+            .data(links)
+            .enter().append("line");
+
+        const node = svg.append("g")
+            .attr("class", "nodes")
+            .selectAll("circle")
+            .data(nodes)
+            .enter().append("circle")
+            .attr("r", 5)
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        node.append("title")
+            .text(d => d.id);
+
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("cx", d => d.x)
+                .attr("cy", d => d.y);
+
+            animateNeedle();
+        });
+
+        d3.select("#start-button").on("click", () => {
+            d3.selectAll(".nodes circle")
+                .transition()
+                .duration(500)
+                .style("fill", "green") // Nodes light up
+                .on("end", showNetworkActivity); // Hypothetical function to illustrate activity
+        });
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        function showStabilityThreshold() {
+            // Select the existing gauge instead of appending a new one
+            const gauge = d3.select("#stability-gauge svg");
+            // Animate the gauge's needle based on node interconnectivity
+            const interconnectivityScore = calculateInterconnectivityScore(); 
+            const needle = gauge.select(".needle");
+            needle.transition()
+                .duration(1000)
+                .attr("transform", "rotate(" + calculateNeedleRotation(interconnectivityScore) + ")");
+        }
+
+        function calculateInterconnectivityScore() {
+            const numberOfLinks = links.length;
+            const numberOfNodes = nodes.length;
+            // Assuming that maximum interconnectivity is when each node is connected to every other node
+            const maxInterconnectivity = numberOfNodes * (numberOfNodes - 1) / 2;
+            const interconnectivityScore = numberOfLinks / maxInterconnectivity;
+            return interconnectivityScore;
+        }
+
+        function activateFailSafe(criticalRotation) {
+            const interconnectivityScore = calculateInterconnectivityScore();
+            if (calculateNeedleRotation(interconnectivityScore) >= criticalRotation) { 
+                d3.selectAll(".nodes circle")
+                    .transition()
+                    .duration(500)
+                    .style("fill", "red"); // Change color scheme to indicate activation
+                // Additional logic to dim nodes or reduce connections
+            }
+        }
+
+        function showFeedbackLoop() {
+            // Assuming feedbackData and funnelEndPosition are defined elsewhere in the script
+            const feedbackIcons = d3.select(".feedback-container").selectAll(".feedback-icon");
+            feedbackIcons.data(feedbackData) // Hypothetical feedback data array
+                .enter()
+                .append("img")
+                .attr("class", "feedback-icon")
+                .attr("src", d => d.iconPath) // Path to positive or negative icon
+                .transition()
+                .duration(1000)
+                .style("transform", "translateY(" + funnelEndPosition + "px)"); // Move icons into the funnel
+        }
+
+        function adjustAndStabilize(safeRotation) {
+            d3.selectAll(".nodes circle")
+                .transition()
+                .duration(500)
+                .style("fill", "blue"); // Nodes change color to indicate stabilization
+
+            // Move the gauge's needle back to the safe zone
+            d3.select(".needle")
+                .transition()
+                .duration(500)
+                .attr("transform", "rotate(" + safeRotation + ")");
+        }
+
+        function concludeAnimation() {
+            d3.select(".summary-screen")
+                .style("display", "block")
+                .selectAll(".summary-step")
+                .data(["Identify Instability", "Activate Fail-Safe", "Integrate Feedback", "Achieve Stability"])
+                .enter()
+                .append("div")
+                .attr("class", "summary-step")
+                .text(d => d);
+        }
+
+        function calculateNeedleRotation(interconnectivityScore) {
+            // The rotation degree is proportional to the score, with a maximum of 180 degrees
+            const rotationDegree = interconnectivityScore * 180;
+            return rotationDegree;
+        }
+
+        function animateNeedle() {
+            const interconnectivityScore = calculateInterconnectivityScore();
+            const rotationDegree = calculateNeedleRotation(interconnectivityScore);
+            const needle = d3.select(".needle");
+
+            needle.transition()
+                .duration(1000)
+                .attrTween("transform", function() {
+                    const currentRotation = d3.select(this).attr("transform").slice(7, -1);
+                    const interpolate = d3.interpolateNumber(currentRotation, rotationDegree);
+                    return function(t) {
+                        return "rotate(" + interpolate(t) + ",50,50)";
+                    };
+                });
+        }
+
+        function showNetworkActivity() {
+            // Use the existing link and node variables for the simulation
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+                
+                animateNeedle();
+            });
+        }
+    </script>
+</body>
+</html>
