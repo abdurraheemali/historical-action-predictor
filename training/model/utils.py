@@ -23,6 +23,52 @@ def strictly_proper_scoring_rule(outputs, targets, num_classes):
     return brier_score(outputs, targets, num_classes=num_classes)
 
 
+def calculate_accuracy(model, dataloader):
+    device = get_device()
+    model.eval()
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            output_probs = torch.nn.functional.softmax(outputs, dim=1)
+            loss = torch.nn.functional.cross_entropy(output_probs, labels)
+    return loss
+
+
+def calculate_chosen_option_accuracy(model, dataloader):
+    correct = 0
+    total = 0
+    device = get_device()
+    model.eval()
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            predicted_classes = torch.argmax(outputs, dim=1)
+            labels = torch.argmax(labels, dim=1)
+            total += labels.size(0)
+            correct += (predicted_classes == labels).sum().item()
+    return correct / total
+
+
+def calculate_other_options_accuracy(model, dataloader):
+    correct = 0
+    total = 0
+    device = get_device()
+    model.eval()
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            other_outputs = outputs.clone()
+            predicted_classes = torch.argmax(outputs, dim=1)
+            other_outputs[predicted_classes == 1] = 0
+            other_labels = labels.clone()
+            other_labels[predicted_classes == 1] = 0
+            loss = torch.nn.functional.cross_entropy(other_outputs, other_labels)
+    return loss
+
+
 # Validation loop
 def validate_model(model, valloader, criterion):
     val_loss = 0.0
@@ -42,6 +88,14 @@ def save_model(model, filename):
         os.makedirs(dir_path)
     path = os.path.join(dir_path, filename)
     torch.save(model.state_dict(), path)
+
+
+def load_model(model, filename):
+    dir_path = os.path.join("results", "models")
+    path = os.path.join(dir_path, filename)
+    model.load_state_dict(torch.load(path))
+    model.eval()  # Set the model to evaluation mode
+    return model
 
 
 # Determine the device to use

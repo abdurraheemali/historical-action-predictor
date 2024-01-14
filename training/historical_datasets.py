@@ -54,11 +54,10 @@ class HistoricalDataset(Dataset):
 class ProbIdentityDataset(Dataset):
     def __init__(self, config: HistoricalDatasetConfig):
         """
-        Args:
-            config (HistoricalDatasetConfig): Configuration object for dataset parameters.
+        he        Args:
+                    config (HistoricalDatasetConfig): Configuration object for dataset parameters.
         """
-        # self.episode_length = config.episode_length
-        # self.num_episodes = config.num_episodes
+
         self.length = config.episode_length * config.num_episodes
         self.num_classes = config.num_classes
         self.num_features = config.num_features
@@ -66,12 +65,10 @@ class ProbIdentityDataset(Dataset):
         self.data = self.generate_data()
 
     def generate_data(self):
-        features = torch.randn(
-            self.length, self.num_classes
+        features = torch.randn(self.length, self.num_classes)
+        labels = (torch.randn(self.length, self.num_classes) < features).to(
+            torch.float32
         )
-        labels = (torch.randn(
-            self.length, self.num_classes
-        ) < features).to(torch.float32)
         return features, labels
 
     def __len__(self):

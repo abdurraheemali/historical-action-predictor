@@ -4,7 +4,11 @@ import torch.optim as optim
 import numpy as np
 from torch.utils.data import TensorDataset, DataLoader, random_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from historical_datasets import HistoricalDatasetConfig, HistoricalDataset, ProbIdentityDataset
+from historical_datasets import (
+    HistoricalDatasetConfig,
+    HistoricalDataset,
+    ProbIdentityDataset,
+)
 import os
 import random
 import logging
@@ -20,7 +24,11 @@ from model.utils import (
     strictly_proper_scoring_rule,
     validate_model,
     save_model,
+    load_model,
     calculate_ece,
+    calculate_accuracy,
+    calculate_chosen_option_accuracy,
+    calculate_other_options_accuracy,
 )
 
 # Load configuration
@@ -38,9 +46,6 @@ VALIDATION_SPLIT = config["VALIDATION_SPLIT"]
 NUM_EPISODES = config["NUM_EPISODES"]
 EPISODE_LENGTH = config["EPISODE_LENGTH"]
 MODEL_DIR = config["MODEL_DIR"]
-
-# bad hack
-NUM_FEATURES = NUM_CLASSES
 
 # Configure logging
 logging_config = config["LOGGING"]
@@ -77,15 +82,11 @@ def train_performative_model(
             inputs, actions = inputs.to(device), actions.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
-            # probabilities = torch.nn.functional.softmax(outputs, dim=1)
+
             probabilities = torch.nn.functional.sigmoid(outputs)
             chosen_actions = torch.argmax(probabilities, dim=1)
-            # strictly_proper_scoring_rule(
-            #     probabilities, actions, actions.max().item() + 1
-            # )
-            conditional_brier_score(
-                probabilities, actions, chosen_actions
-            )
+
+            conditional_brier_score(probabilities, actions, chosen_actions)
             loss = criterion(outputs, actions)
             loss.backward()
             optimizer.step()
@@ -117,32 +118,19 @@ def train_zero_sum_models(
             optimizer_1.zero_grad()
             optimizer_2.zero_grad()
 
-            # Forward pass for both models
             outputs_1 = model_1(inputs)
-            # probabilities_1 = torch.nn.functional.softmax(outputs_1, dim=1)
+
             probabilities_1 = torch.nn.functional.sigmoid(outputs_1)
             outputs_2 = model_2(inputs)
-            # probabilities_2 = torch.nn.functional.softmax(outputs_2, dim=1)
+
             probabilities_2 = torch.nn.functional.sigmoid(outputs_2)
 
             max_probabilities = torch.max(probabilities_1, probabilities_2)
             chosen_actions = torch.argmax(max_probabilities, dim=1)
 
-            # Compute scores
-            # score_1 = strictly_proper_scoring_rule(
-            #     probabilities_1, actions, actions.max().item() + 1
-            # )
-            # score_2 = strictly_proper_scoring_rule(
-            #     probabilities_2, actions, actions.max().item() + 1
-            # )
-            score_1 = conditional_brier_score(
-                probabilities_1, actions, chosen_actions
-            )
-            score_2 = conditional_brier_score(
-                probabilities_2, actions, chosen_actions
-            )
+            score_1 = conditional_brier_score(probabilities_1, actions, chosen_actions)
+            score_2 = conditional_brier_score(probabilities_2, actions, chosen_actions)
 
-            # Compute the losses as the negation of the other's score
             loss_1 = score_1 - score_2.detach()
             loss_2 = score_2 - score_1.detach()
 
@@ -186,7 +174,6 @@ def main():
         transform=None,
     )
 
-    # full_dataset = HistoricalDataset(config=config)
     full_dataset = ProbIdentityDataset(config=config)
     validation_split = 0.2
     num_train = int((1 - validation_split) * len(full_dataset))
@@ -195,31 +182,53 @@ def main():
     trainloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     valloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
-    # Train the performative model
-    train_performative_model(
-        performative_model, trainloader, valloader, criterion, optimizer, scheduler
+    # Load the performative model instead of training
+    performative_model = load_model(
+        ActionPredictor(NUM_FEATURES, NUM_CLASSES), "best_performative_model.pth"
     )
+    performative_model = performative_model.to(device)
 
-    # Initialize and train Zero Sum Predictors
-    zerosum_model_1 = ActionPredictor(NUM_FEATURES, NUM_CLASSES).to(device)
-    zerosum_model_2 = ActionPredictor(NUM_FEATURES, NUM_CLASSES).to(device)
-    zerosum_optimizer_1 = optim.SGD(zerosum_model_1.parameters(), lr=0.01, momentum=0.9)
-    zerosum_optimizer_2 = optim.SGD(zerosum_model_2.parameters(), lr=0.01, momentum=0.9)
-    train_zero_sum_models(
-        zerosum_model_1,
-        zerosum_model_2,
-        trainloader,
-        zerosum_optimizer_1,
-        zerosum_optimizer_2,
+    # Load Zero Sum Predictors instead of training
+    zerosum_model_1 = load_model(
+        ActionPredictor(NUM_FEATURES, NUM_CLASSES), "zerosum_model_1_epoch_100.pth"
     )
+    zerosum_model_1 = zerosum_model_1.to(device)
+    zerosum_model_2 = load_model(
+        ActionPredictor(NUM_FEATURES, NUM_CLASSES), "zerosum_model_2_epoch_100.pth"
+    )
+    zerosum_model_2 = zerosum_model_2.to(device)
 
+    # Calculate ECE for a batch from the validation set
     inputs, labels = next(iter(valloader))
-
     inputs, labels = inputs.to(device), labels.to(device)
-
     ece_performative = calculate_ece(performative_model(inputs), labels)
     ece_zerosum_1 = calculate_ece(zerosum_model_1(inputs), labels)
     ece_zerosum_2 = calculate_ece(zerosum_model_2(inputs), labels)
+
+    # Calculate accuracies for each model
+    accuracy_performative = calculate_accuracy(performative_model, valloader)
+    accuracy_zerosum_1 = calculate_accuracy(zerosum_model_1, valloader)
+    accuracy_zerosum_2 = calculate_accuracy(zerosum_model_2, valloader)
+
+    chosen_option_accuracy_performative = calculate_chosen_option_accuracy(
+        performative_model, valloader
+    )
+    chosen_option_accuracy_zerosum_1 = calculate_chosen_option_accuracy(
+        zerosum_model_1, valloader
+    )
+    chosen_option_accuracy_zerosum_2 = calculate_chosen_option_accuracy(
+        zerosum_model_2, valloader
+    )
+
+    other_options_accuracy_performative = calculate_other_options_accuracy(
+        performative_model, valloader
+    )
+    other_options_accuracy_zerosum_1 = calculate_other_options_accuracy(
+        zerosum_model_1, valloader
+    )
+    other_options_accuracy_zerosum_2 = calculate_other_options_accuracy(
+        zerosum_model_2, valloader
+    )
 
     # Plot ECE values
     plt.figure(figsize=(10, 6))
@@ -230,6 +239,45 @@ def main():
     plt.title("Expected Calibration Error for Each Model")
     plt.ylabel("ECE")
     plt.savefig("results/ece_plot.png")
+
+    # Plot average prediction accuracy across models
+
+    plt.figure(figsize=(10, 6))
+    plt.bar(
+        ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
+        [accuracy_performative, accuracy_zerosum_1, accuracy_zerosum_2],
+    )
+    plt.title("Average Prediction Accuracy for Each Model")
+    plt.ylabel("Accuracy")
+    plt.savefig("results/average_accuracy_plot.png")
+
+    # Plot accuracy on the chosen option across models
+    plt.figure(figsize=(10, 6))
+    plt.bar(
+        ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
+        [
+            chosen_option_accuracy_performative,
+            chosen_option_accuracy_zerosum_1,
+            chosen_option_accuracy_zerosum_2,
+        ],
+    )
+    plt.title("Accuracy on Chosen Option for Each Model")
+    plt.ylabel("Accuracy")
+    plt.savefig("results/chosen_option_accuracy_plot.png")
+
+    # Plot accuracy on all other options across models
+    plt.figure(figsize=(10, 6))
+    plt.bar(
+        ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
+        [
+            other_options_accuracy_performative,
+            other_options_accuracy_zerosum_1,
+            other_options_accuracy_zerosum_2,
+        ],
+    )
+    plt.title("Accuracy on Other Options for Each Model")
+    plt.ylabel("Accuracy")
+    plt.savefig("results/other_options_accuracy_plot.png")
 
 
 if __name__ == "__main__":
