@@ -5,13 +5,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class ActionPredictor(nn.Module):
-    def __init__(self, num_features, num_classes):
-        super(ActionPredictor, self).__init__()
+    def __init__(self, num_features: int, num_classes: int) -> None:
+        super().__init__()  # type: ignore
         self.fc1 = nn.Linear(num_features, 128)
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, num_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = torch.flatten(x, 1)  # Flatten the input
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
@@ -21,8 +21,12 @@ class ActionPredictor(nn.Module):
 
 # Initialize models, optimizers, and other components
 def initialize_components(
-    model_class, num_features, num_classes, learning_rate=0.01, momentum=0.9
-):
+    model_class: ActionPredictor,
+    num_features: int,
+    num_classes: int,
+    learning_rate: float = 0.01,
+    momentum: float = 0.9,
+) -> tuple[nn.Module, nn.CrossEntropyLoss, optim.SGD, ReduceLROnPlateau]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model_class(num_features, num_classes).to(device)
     criterion = nn.CrossEntropyLoss()

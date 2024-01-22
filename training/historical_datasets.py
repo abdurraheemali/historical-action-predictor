@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional, Callable
 import torch
-from torch.utils.data import Dataset, random_split
+from torch.utils.data import Dataset
 
 
 class HistoricalDatasetConfig(BaseModel):
@@ -9,13 +9,13 @@ class HistoricalDatasetConfig(BaseModel):
     episode_length: int = 100
     num_classes: int = 2
     num_features: int = 10
-    transform: Optional[Callable] = None
+    transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None
 
     class Config:
         arbitrary_types_allowed = True
 
 
-class HistoricalDataset(Dataset):
+class HistoricalDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __init__(self, config: HistoricalDatasetConfig):
         """
         Args:
@@ -40,7 +40,7 @@ class HistoricalDataset(Dataset):
     def __len__(self):
         return self.num_episodes * self.episode_length
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Extract features and label for a single episode
         episode_idx = idx // self.episode_length
         time_idx = idx % self.episode_length
@@ -51,7 +51,7 @@ class HistoricalDataset(Dataset):
         return features, label
 
 
-class ProbIdentityDataset(Dataset):
+class ProbIdentityDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
     def __init__(self, config: HistoricalDatasetConfig):
         """
         he        Args:
@@ -74,7 +74,7 @@ class ProbIdentityDataset(Dataset):
     def __len__(self):
         return self.length
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor]:
         # Extract features and label for a single episode
         features = self.data[0][idx]
         label = self.data[1][idx]

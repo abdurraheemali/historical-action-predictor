@@ -1,21 +1,31 @@
 import torch
 import os
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from training.model.network import ActionPredictor
+from training.historical_datasets import ProbIdentityDataset
 
 
-def brier_score(outputs, targets, num_classes):
+def brier_score(
+    outputs: torch.Tensor, targets: torch.Tensor, num_classes: int
+) -> torch.Tensor:
     one_hot_targets = torch.nn.functional.one_hot(
         targets, num_classes=num_classes
     ).float()
     return torch.mean((one_hot_targets - outputs).pow(2))
 
 
-def conditional_brier_score(outputs, targets, chosen_actions):
+def conditional_brier_score(
+    outputs: torch.Tensor, targets: torch.Tensor, chosen_actions: torch.Tensor
+) -> torch.Tensor:
     chosen_action_probs = torch.gather(outputs, 1, chosen_actions.unsqueeze(1))
     chosen_action_targets = torch.gather(targets, 1, chosen_actions.unsqueeze(1))
     return torch.mean((chosen_action_targets - chosen_action_probs).pow(2))
 
 
-def strictly_proper_scoring_rule(outputs, targets, num_classes):
+def strictly_proper_scoring_rule(
+    outputs: torch.Tensor, targets: torch.Tensor, num_classes: int
+) -> torch.Tensor:
     # The Brier score is a strictly proper scoring rule that measures the accuracy of probabilistic predictions
     # It is the mean squared difference between the predicted probability assigned to the possible outcomes and the actual outcome
     # Here, we assume that 'outputs' are the predicted probabilities of each class (after softmax)
@@ -23,19 +33,24 @@ def strictly_proper_scoring_rule(outputs, targets, num_classes):
     return brier_score(outputs, targets, num_classes=num_classes)
 
 
-def calculate_accuracy(model, dataloader):
+def calculate_accuracy(
+    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+) -> float:
     device = get_device()
     model.eval()
+    loss = 0.0
     with torch.no_grad():
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             output_probs = torch.nn.functional.softmax(outputs, dim=1)
-            loss = torch.nn.functional.cross_entropy(output_probs, labels)
-    return loss
+            loss += torch.nn.functional.cross_entropy(output_probs, labels).item()
+    return loss / len(dataloader)
 
 
-def calculate_chosen_option_accuracy(model, dataloader):
+def calculate_chosen_option_accuracy(
+    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+) -> float:
     correct = 0
     total = 0
     device = get_device()
@@ -51,11 +66,12 @@ def calculate_chosen_option_accuracy(model, dataloader):
     return correct / total
 
 
-def calculate_other_options_accuracy(model, dataloader):
-    correct = 0
-    total = 0
+def calculate_other_options_accuracy(
+    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+) -> float:
     device = get_device()
     model.eval()
+    loss = 0.0
     with torch.no_grad():
         for inputs, labels in dataloader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -65,12 +81,16 @@ def calculate_other_options_accuracy(model, dataloader):
             other_outputs[predicted_classes == 1] = 0
             other_labels = labels.clone()
             other_labels[predicted_classes == 1] = 0
-            loss = torch.nn.functional.cross_entropy(other_outputs, other_labels)
-    return loss
+            loss = torch.nn.functional.cross_entropy(other_outputs, other_labels).item()
+    return loss / len(dataloader)
 
 
 # Validation loop
-def validate_model(model, valloader, criterion):
+def validate_model(
+    model: ActionPredictor,
+    valloader: DataLoader[ProbIdentityDataset],
+    criterion: nn.CrossEntropyLoss,
+) -> float:
     val_loss = 0.0
     device = get_device()
     model.eval()
@@ -82,18 +102,18 @@ def validate_model(model, valloader, criterion):
     return val_loss / len(valloader)
 
 
-def save_model(model, filename):
+def save_model(model: ActionPredictor, filename: str) -> None:
     dir_path = os.path.join("results", "models")
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     path = os.path.join(dir_path, filename)
-    torch.save(model.state_dict(), path)
+    torch.save(model.state_dict(), path)  # type: ignore
 
 
-def load_model(model, filename):
+def load_model(model: ActionPredictor, filename: str) -> ActionPredictor:
     dir_path = os.path.join("results", "models")
     path = os.path.join(dir_path, filename)
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(state_dict=torch.load(f=path))  # type: ignore
     model.eval()  # Set the model to evaluation mode
     return model
 
@@ -104,13 +124,15 @@ def get_device():
 
 
 # Set the random seed for reproducibility
-def set_seed(seed):
-    torch.manual_seed(seed)
+def set_seed(seed: int) -> None:
+    torch.manual_seed(seed=seed)  # type: ignore
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
 
-def calculate_ece(outputs, labels, n_bins=10):
+def calculate_ece(
+    outputs: torch.Tensor, labels: torch.Tensor, n_bins: int = 10
+) -> torch.Tensor:
     bin_boundaries = torch.linspace(0, 1, n_bins + 1)
     bin_lowers = bin_boundaries[:-1]
     bin_uppers = bin_boundaries[1:]

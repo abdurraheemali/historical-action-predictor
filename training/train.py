@@ -13,6 +13,7 @@ import os
 import random
 import logging
 import json
+from torch.utils.data import Subset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from model.network import initialize_components, ActionPredictor
@@ -20,6 +21,7 @@ from model.utils import (
     set_seed,
     get_device,
     brier_score,
+    calculate_ece,
     conditional_brier_score,
     strictly_proper_scoring_rule,
     validate_model,
@@ -49,7 +51,14 @@ MODEL_DIR = config["MODEL_DIR"]
 
 # Configure logging
 logging_config = config["LOGGING"]
-filename = os.path.join(*logging_config["FILENAME"].split("/"))
+
+# Ensure that logging_config["FILENAME"] is a string and it contains valid file path
+assert isinstance(
+    logging_config["FILENAME"], str
+), "FILENAME in logging_config must be a string"
+assert "/" in logging_config["FILENAME"], "FILENAME in logging_config must contain '/'"
+
+filename: str = os.path.join(*logging_config["FILENAME"].split("/"))
 
 if not os.path.exists(os.path.dirname(filename)):
     os.makedirs(os.path.dirname(filename))
@@ -65,14 +74,14 @@ device = get_device()
 
 
 def train_performative_model(
-    model,
-    trainloader,
-    valloader,
-    criterion,
-    optimizer,
-    scheduler,
-    num_epochs=NUM_EPOCHS,
-):
+    model: nn.Module,
+    trainloader: DataLoader[ProbIdentityDataset],
+    valloader: DataLoader[ProbIdentityDataset],
+    criterion: nn.Module,
+    optimizer: optim.Optimizer,
+    scheduler: ReduceLROnPlateau,
+    num_epochs: int = NUM_EPOCHS,
+) -> None:
     best_loss = float("inf")
 
     for epoch in tqdm(range(num_epochs)):
@@ -106,8 +115,13 @@ def train_performative_model(
 
 # Define the Zero Sum Predictor training function
 def train_zero_sum_models(
-    model_1, model_2, trainloader, optimizer_1, optimizer_2, num_epochs=NUM_EPOCHS
-):
+    model_1: nn.Module,
+    model_2: nn.Module,
+    trainloader: DataLoader[ProbIdentityDataset],
+    optimizer_1: optim.Optimizer,
+    optimizer_2: optim.Optimizer,
+    num_epochs: int = NUM_EPOCHS,
+) -> None:
     for epoch in tqdm(range(num_epochs)):
         zerosum_running_score_1 = 0.0
         zerosum_running_score_2 = 0.0
@@ -155,14 +169,18 @@ def train_zero_sum_models(
             f"Epoch {epoch+1}, Zero Sum Score Model 2: {zerosum_running_score_2/len(trainloader)}"
         )
         # Save the models after each epoch
-        save_model(model_1, f"zerosum_model_1_epoch_{epoch+1}.pth")
-        save_model(model_2, f"zerosum_model_2_epoch_{epoch+1}.pth")
+        save_model(model=model_1, filename=f"zerosum_model_1_epoch_{epoch+1}.pth")
+        save_model(model=model_2, filename=f"zerosum_model_2_epoch_{epoch+1}.pth")
 
 
 def main():
     # Initialize performative model with the number of input features and classes
     performative_model, criterion, optimizer, scheduler = initialize_components(
-        ActionPredictor, NUM_FEATURES, NUM_CLASSES, LEARNING_RATE, MOMENTUM
+        model_class=ActionPredictor,
+        num_features=NUM_FEATURES,
+        num_classes=NUM_CLASSES,
+        learning_rate=LEARNING_RATE,
+        momentum=MOMENTUM,
     )
 
     # Load and prepare data
@@ -178,9 +196,11 @@ def main():
     validation_split = 0.2
     num_train = int((1 - validation_split) * len(full_dataset))
     num_val = len(full_dataset) - num_train
-    train_dataset, val_dataset = random_split(full_dataset, [num_train, num_val])
-    trainloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    valloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+    train_dataset: Subset[ProbIdentityDataset] = random_split(
+        dataset=full_dataset, lengths=[num_train, num_val]
+    )
+    trainloader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+    valloader = DataLoader(dataset=val_dataset, batch_size=64, shuffle=False)
 
     # Load the performative model instead of training
     performative_model = load_model(
