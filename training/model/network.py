@@ -21,14 +21,13 @@ class ActionPredictor(nn.Module):
 
 # Initialize models, optimizers, and other components
 def initialize_components(
-    model_class: ActionPredictor,
     num_features: int,
     num_classes: int,
     learning_rate: float = 0.01,
     momentum: float = 0.9,
-) -> tuple[nn.Module, nn.CrossEntropyLoss, optim.SGD, ReduceLROnPlateau]:
+) -> tuple[ActionPredictor, nn.Module, optim.SGD, ReduceLROnPlateau]:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model_class(num_features, num_classes).to(device)
+    model = ActionPredictor(num_features, num_classes).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=momentum)
     scheduler = ReduceLROnPlateau(

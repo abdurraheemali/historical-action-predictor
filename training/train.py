@@ -1,33 +1,27 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
-from torch.utils.data import TensorDataset, DataLoader, random_split
+from torch.utils.data import DataLoader, random_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from historical_datasets import (
     HistoricalDatasetConfig,
-    HistoricalDataset,
     ProbIdentityDataset,
 )
+from typing import Literal
 import os
-import random
 import logging
 import json
-from torch.utils.data import Subset
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from model.network import initialize_components, ActionPredictor
 from model.utils import (
     set_seed,
     get_device,
-    brier_score,
     calculate_ece,
     conditional_brier_score,
-    strictly_proper_scoring_rule,
     validate_model,
     save_model,
     load_model,
-    calculate_ece,
     calculate_accuracy,
     calculate_chosen_option_accuracy,
     calculate_other_options_accuracy,
@@ -52,12 +46,6 @@ MODEL_DIR = config["MODEL_DIR"]
 # Configure logging
 logging_config = config["LOGGING"]
 
-# Ensure that logging_config["FILENAME"] is a string and it contains valid file path
-assert isinstance(
-    logging_config["FILENAME"], str
-), "FILENAME in logging_config must be a string"
-assert "/" in logging_config["FILENAME"], "FILENAME in logging_config must contain '/'"
-
 filename: str = os.path.join(*logging_config["FILENAME"].split("/"))
 
 if not os.path.exists(os.path.dirname(filename)):
@@ -70,13 +58,13 @@ logging.basicConfig(
 )
 
 set_seed(SEED)
-device = get_device()
+device: Literal["cuda", "cpu"] = get_device()
 
 
 def train_performative_model(
-    model: nn.Module,
-    trainloader: DataLoader[ProbIdentityDataset],
-    valloader: DataLoader[ProbIdentityDataset],
+    model: ActionPredictor,
+    trainloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    valloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     criterion: nn.Module,
     optimizer: optim.Optimizer,
     scheduler: ReduceLROnPlateau,
@@ -101,7 +89,7 @@ def train_performative_model(
             optimizer.step()
             running_loss += loss.item()
 
-        val_loss = validate_model(model, valloader, criterion)
+        val_loss = validate_model(model=model, valloader=valloader, criterion=criterion)
         logging.info(f"Epoch {epoch+1}, Loss: {running_loss/len(trainloader)}")
 
         if val_loss < best_loss:
@@ -115,9 +103,9 @@ def train_performative_model(
 
 # Define the Zero Sum Predictor training function
 def train_zero_sum_models(
-    model_1: nn.Module,
-    model_2: nn.Module,
-    trainloader: DataLoader[ProbIdentityDataset],
+    model_1: ActionPredictor,
+    model_2: ActionPredictor,
+    trainloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
     optimizer_1: optim.Optimizer,
     optimizer_2: optim.Optimizer,
     num_epochs: int = NUM_EPOCHS,
@@ -148,12 +136,12 @@ def train_zero_sum_models(
             loss_1 = score_1 - score_2.detach()
             loss_2 = score_2 - score_1.detach()
 
-            loss_1.backward(retain_graph=True)
+            loss_1.backward(retain_graph=True)  # type: ignore
             optimizer_1.step()
 
             optimizer_2.zero_grad()
 
-            loss_2.backward()
+            loss_2.backward()  # type: ignore
             optimizer_2.step()
 
             # Calculate the zero-sum score for this batch
@@ -176,7 +164,6 @@ def train_zero_sum_models(
 def main():
     # Initialize performative model with the number of input features and classes
     performative_model, criterion, optimizer, scheduler = initialize_components(
-        model_class=ActionPredictor,
         num_features=NUM_FEATURES,
         num_classes=NUM_CLASSES,
         learning_rate=LEARNING_RATE,
@@ -196,11 +183,23 @@ def main():
     validation_split = 0.2
     num_train = int((1 - validation_split) * len(full_dataset))
     num_val = len(full_dataset) - num_train
-    train_dataset: Subset[ProbIdentityDataset] = random_split(
+    train_dataset, val_dataset = random_split(
         dataset=full_dataset, lengths=[num_train, num_val]
     )
-    trainloader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
+    trainloader = DataLoader(dataset=train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     valloader = DataLoader(dataset=val_dataset, batch_size=64, shuffle=False)
+
+    train_performative = False
+    if train_performative:
+        train_performative_model(
+            model=performative_model,
+            trainloader=trainloader,
+            valloader=valloader,
+            criterion=criterion,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            num_epochs=NUM_EPOCHS,
+        )
 
     # Load the performative model instead of training
     performative_model = load_model(
@@ -251,29 +250,29 @@ def main():
     )
 
     # Plot ECE values
-    plt.figure(figsize=(10, 6))
-    plt.bar(
+    plt.figure(figsize=(10, 6))  # type: ignore
+    plt.bar(  # type: ignore
         ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
         [ece_performative.item(), ece_zerosum_1.item(), ece_zerosum_2.item()],
-    )
-    plt.title("Expected Calibration Error for Each Model")
-    plt.ylabel("ECE")
-    plt.savefig("results/ece_plot.png")
+    )  # type: ignore
+    plt.title("Expected Calibration Error for Each Model")  # type: ignore
+    plt.ylabel("ECE")  # type: ignore
+    plt.savefig("results/ece_plot.png")  # type: ignore
 
     # Plot average prediction accuracy across models
 
-    plt.figure(figsize=(10, 6))
-    plt.bar(
+    plt.figure(figsize=(10, 6))  # type: ignore
+    plt.bar(  # type: ignore
         ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
         [accuracy_performative, accuracy_zerosum_1, accuracy_zerosum_2],
     )
-    plt.title("Average Prediction Accuracy for Each Model")
-    plt.ylabel("Accuracy")
-    plt.savefig("results/average_accuracy_plot.png")
+    plt.title("Average Prediction Accuracy for Each Model")  # type: ignore
+    plt.ylabel("Accuracy")  # type: ignore
+    plt.savefig("results/average_accuracy_plot.png")  # type: ignore
 
     # Plot accuracy on the chosen option across models
-    plt.figure(figsize=(10, 6))
-    plt.bar(
+    plt.figure(figsize=(10, 6))  # type: ignore
+    plt.bar(  # type: ignore
         ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
         [
             chosen_option_accuracy_performative,
@@ -281,23 +280,23 @@ def main():
             chosen_option_accuracy_zerosum_2,
         ],
     )
-    plt.title("Accuracy on Chosen Option for Each Model")
-    plt.ylabel("Accuracy")
-    plt.savefig("results/chosen_option_accuracy_plot.png")
+    plt.title("Accuracy on Chosen Option for Each Model")  # type: ignore
+    plt.ylabel("Accuracy")  # type: ignore
+    plt.savefig("results/chosen_option_accuracy_plot.png")  # type: ignore
 
     # Plot accuracy on all other options across models
-    plt.figure(figsize=(10, 6))
-    plt.bar(
-        ["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
-        [
+    plt.figure(figsize=(10, 6))  # type: ignore
+    plt.bar(  # type: ignore
+        x=["Performative Model", "Zero Sum Model 1", "Zero Sum Model 2"],
+        height=[
             other_options_accuracy_performative,
             other_options_accuracy_zerosum_1,
             other_options_accuracy_zerosum_2,
         ],
     )
-    plt.title("Accuracy on Other Options for Each Model")
-    plt.ylabel("Accuracy")
-    plt.savefig("results/other_options_accuracy_plot.png")
+    plt.title(label="Accuracy on Other Options for Each Model")  # type: ignore
+    plt.ylabel(ylabel="Accuracy")  # type: ignore
+    plt.savefig("results/other_options_accuracy_plot.png")  # type: ignore
 
 
 if __name__ == "__main__":

@@ -1,9 +1,9 @@
 import torch
 import os
 import torch.nn as nn
+from typing import Literal
 from torch.utils.data import DataLoader
 from training.model.network import ActionPredictor
-from training.historical_datasets import ProbIdentityDataset
 
 
 def brier_score(
@@ -34,7 +34,7 @@ def strictly_proper_scoring_rule(
 
 
 def calculate_accuracy(
-    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+    model: ActionPredictor, dataloader: DataLoader[tuple[torch.Tensor, torch.Tensor]]
 ) -> float:
     device = get_device()
     model.eval()
@@ -49,11 +49,11 @@ def calculate_accuracy(
 
 
 def calculate_chosen_option_accuracy(
-    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+    model: ActionPredictor, dataloader: DataLoader[tuple[torch.Tensor, torch.Tensor]]
 ) -> float:
     correct = 0
     total = 0
-    device = get_device()
+    device: Literal["cuda", "cpu"] = get_device()
     model.eval()
     with torch.no_grad():
         for inputs, labels in dataloader:
@@ -67,7 +67,7 @@ def calculate_chosen_option_accuracy(
 
 
 def calculate_other_options_accuracy(
-    model: ActionPredictor, dataloader: DataLoader[ProbIdentityDataset]
+    model: ActionPredictor, dataloader: DataLoader[tuple[torch.Tensor, torch.Tensor]]
 ) -> float:
     device = get_device()
     model.eval()
@@ -88,8 +88,8 @@ def calculate_other_options_accuracy(
 # Validation loop
 def validate_model(
     model: ActionPredictor,
-    valloader: DataLoader[ProbIdentityDataset],
-    criterion: nn.CrossEntropyLoss,
+    valloader: DataLoader[tuple[torch.Tensor, torch.Tensor]],
+    criterion: nn.Module,
 ) -> float:
     val_loss = 0.0
     device = get_device()
@@ -103,7 +103,7 @@ def validate_model(
 
 
 def save_model(model: ActionPredictor, filename: str) -> None:
-    dir_path = os.path.join("results", "models")
+    dir_path: str = os.path.join("results", "models")
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
     path = os.path.join(dir_path, filename)
