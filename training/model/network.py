@@ -18,7 +18,6 @@ class ActionPredictor(nn.Module):
         x = self.fc3(x)
         return x
 
-
 # Initialize models, optimizers, and other components
 def initialize_components(
     num_features: int,

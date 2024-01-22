@@ -1,6 +1,5 @@
 {
     "python.languageServer": "Default",
-    "cSpell.enabled": true,
     "editor.formatOnSave": true,
     "[python]": {
         "editor.tabSize": 4
@@ -65,5 +64,5 @@
     ],
     "python.analysis.typeCheckingMode": "strict",
     "python.analysis.autoImportCompletions": true,
-    "cspell.enabled": false
+    "cSpell.enabled": false
 }

@@ -3,7 +3,7 @@ import os
 import torch.nn as nn
 from typing import Literal
 from torch.utils.data import DataLoader
-from training.model.network import ActionPredictor
+from model.network import ActionPredictor
 
 
 def brier_score(
@@ -44,7 +44,10 @@ def calculate_accuracy(
             inputs, labels = inputs.to(device), labels.to(device)
             outputs = model(inputs)
             output_probs = torch.nn.functional.softmax(outputs, dim=1)
-            loss += torch.nn.functional.cross_entropy(output_probs, labels).item()
+            _, predicted = torch.max(output_probs, 1)
+            correct = (predicted == labels).sum().item()
+            accuracy = correct / labels.size(0)
+            loss += accuracy
     return loss / len(dataloader)
 
 
@@ -83,6 +86,7 @@ def calculate_other_options_accuracy(
             other_labels[predicted_classes == 1] = 0
             loss = torch.nn.functional.cross_entropy(other_outputs, other_labels).item()
     return loss / len(dataloader)
+
 
 
 # Validation loop

@@ -11,6 +11,7 @@ from typing import Literal
 import os
 import logging
 import json
+import copy
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from model.network import initialize_components, ActionPredictor
@@ -200,21 +201,34 @@ def main():
             scheduler=scheduler,
             num_epochs=NUM_EPOCHS,
         )
-
-    # Load the performative model instead of training
-    performative_model = load_model(
-        ActionPredictor(NUM_FEATURES, NUM_CLASSES), "best_performative_model.pth"
-    )
+    else:
+        # Load the performative model instead of training
+        performative_model = load_model(
+            ActionPredictor(NUM_FEATURES, NUM_CLASSES), "best_performative_model.pth"
+        )
     performative_model = performative_model.to(device)
 
-    # Load Zero Sum Predictors instead of training
+    train_zerosum = True
+    if train_zerosum:
+        zerosum_model_1 = ActionPredictor(NUM_FEATURES, NUM_CLASSES)
+        zerosum_model_2: ActionPredictor = copy.deepcopy(zerosum_model_1)
+        train_zero_sum_models(
+            model_1=zerosum_model_1,
+            model_2=zerosum_model_2,
+            trainloader=trainloader,
+            optimizer_1=optimizer,
+            optimizer_2=optimizer,
+            num_epochs=NUM_EPOCHS,
+        )
+
+    # Load trained Zero Sum Predictors
     zerosum_model_1 = load_model(
         ActionPredictor(NUM_FEATURES, NUM_CLASSES), "zerosum_model_1_epoch_100.pth"
     )
-    zerosum_model_1 = zerosum_model_1.to(device)
     zerosum_model_2 = load_model(
         ActionPredictor(NUM_FEATURES, NUM_CLASSES), "zerosum_model_2_epoch_100.pth"
     )
+    zerosum_model_1 = zerosum_model_1.to(device)
     zerosum_model_2 = zerosum_model_2.to(device)
 
     # Calculate ECE for a batch from the validation set

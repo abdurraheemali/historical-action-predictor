@@ -66,9 +66,10 @@ class ProbIdentityDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     def generate_data(self):
         features = torch.randn(self.length, self.num_classes)
-        labels = (torch.randn(self.length, self.num_classes) < features).to(
+        raw_labels = (torch.randn(self.length, self.num_classes) < features).to(
             torch.float32
         )
+        labels = torch.nn.functional.softmax(raw_labels, dim=1)
         return features, labels
 
     def __len__(self):
